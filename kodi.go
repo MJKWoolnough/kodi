@@ -15,6 +15,22 @@ type Server struct {
 	rpc *rpc.Server
 }
 
+type Client interface {
+}
+
+type wrapper struct {
+	client Client
+}
+
+func New(c Client) (*Server, error) {
+	s := rpc.NewServer()
+	err := s.Register(wrapper{c})
+	if err != nil {
+		return nil, err
+	}
+	return &Server{rpc: s}, nil
+}
+
 type readWriter struct {
 	io.Reader
 	io.Writer
@@ -33,12 +49,14 @@ func (r readWriter) Close() error {
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
-		s.runConn(repsonseRequest{Reader: r.Body, Writer: w})
+		s.Connect(repsonseRequest{Reader: r.Body, Writer: w})
+		r.Body.Close()
 	case http.MethodGet:
 		r.ParseForm()
-		s.runConn(repsonseRequest{Reader: strings.NewReader(r.Form.Get(request)), Writer: w})
+		s.Connect(repsonseRequest{Reader: strings.NewReader(r.Form.Get(request)), Writer: w})
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
+		//s.rpc.ServeHTTP(w, r)
 	}
 }
 
@@ -48,18 +66,15 @@ func (s *Server) Listen(l net.Listener) error {
 		if err != nil {
 			return err
 		}
-		go s.runConn(c)
+		// check for websocket?
+		go s.Connect(c)
 	}
 }
 
 func (s *Server) Websocket(c *websocket.Conn) {
-	s.runConn(c)
+	s.Connect(c)
 }
 
-func (s *Server) Connect(c io.ReadWriteCloser) {
-	s.runConn(c)
-}
-
-func (s *Server) runConn(rwc io.ReadWriteCloser) {
+func (s *Server) Connect(rwc io.ReadWriteCloser) {
 	s.rpc.ServeCodec(jsonrpc.NewServerCodec(rwc))
 }
