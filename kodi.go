@@ -56,6 +56,10 @@ func (s *Server) Websocket(c *websocket.Conn) {
 	s.runConn(c)
 }
 
+func (s *Server) Connect(c io.ReadWriteCloser) {
+	s.runConn(c)
+}
+
 func (s *Server) runConn(rwc io.ReadWriteCloser) {
 	s.rpc.ServeCodec(jsonrpc.NewServerCodec(rwc))
 }
