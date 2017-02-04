@@ -15,13 +15,6 @@ type Server struct {
 	rpc *rpc.Server
 }
 
-type Client interface {
-}
-
-type wrapper struct {
-	client Client
-}
-
 func New(c Client) (*Server, error) {
 	s := rpc.NewServer()
 	err := s.Register(wrapper{c})
